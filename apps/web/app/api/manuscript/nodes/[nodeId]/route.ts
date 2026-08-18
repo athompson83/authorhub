@@ -33,7 +33,7 @@ export async function PUT(
   try {
     const normalized = ensureStableBlockIds(content as never);
     const validated = manuscriptDocumentSchema.parse(normalized);
-    const nextVersion = await saveNodeContent(supabase, user.id, nodeId, version, validated);
+    const nextVersion = await saveNodeContent(supabase, nodeId, version, validated);
     return NextResponse.json({ version: nextVersion, content: validated });
   } catch (error) {
     if (error instanceof Error && error.message === 'VERSION_CONFLICT') {
