@@ -20,9 +20,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      # Bootstrap exception: Codex should commit pnpm-lock.yaml after the first
-      # successful install, then switch this back to --frozen-lockfile.
+      # Bootstrap exception: no lockfile exists yet. Codex must commit the
+      # generated pnpm-lock.yaml, restore pnpm caching, and switch install back
+      # to --frozen-lockfile after the first verified dependency resolution.
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
