@@ -30,12 +30,13 @@ export async function createBookAction(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/sign-in');
 
+  let book: { id: string };
   try {
-    const book = await createBook(supabase, user.id, parsed.data);
-    revalidatePath('/library');
-    redirect(`/books/${book.id}`);
+    book = await createBook(supabase, user.id, parsed.data);
   } catch (error) {
-    if (error instanceof Error && error.message === 'NEXT_REDIRECT') throw error;
     return { error: error instanceof Error ? error.message : 'Unable to create book.' };
   }
+
+  revalidatePath('/library');
+  redirect(`/books/${book.id}`);
 }
