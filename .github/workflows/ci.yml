@@ -21,7 +21,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # Bootstrap exception: Codex should commit pnpm-lock.yaml after the first
+      # successful install, then switch this back to --frozen-lockfile.
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
