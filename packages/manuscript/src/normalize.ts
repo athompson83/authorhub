@@ -17,16 +17,21 @@ function normalizeBlock(node: LooseNode): LooseNode {
   if (node.type === 'text') return { ...node };
 
   const currentId = typeof node.attrs?.blockId === 'string' ? node.attrs.blockId : null;
-  const attrs = {
-    ...node.attrs,
-    blockId: currentId && isBlockId(currentId) ? currentId : createBlockId(),
+  const normalized: LooseNode = {
+    ...node,
+    attrs: {
+      ...node.attrs,
+      blockId: currentId && isBlockId(currentId) ? currentId : createBlockId(),
+    },
   };
 
-  return {
-    ...node,
-    attrs,
-    content: node.content?.map((child) => (child.type === 'text' ? { ...child } : normalizeBlock(child))),
-  };
+  if (node.content) {
+    normalized.content = node.content.map((child) =>
+      child.type === 'text' ? { ...child } : normalizeBlock(child),
+    );
+  }
+
+  return normalized;
 }
 
 export function ensureStableBlockIds(document: LooseDocument): LooseDocument {
