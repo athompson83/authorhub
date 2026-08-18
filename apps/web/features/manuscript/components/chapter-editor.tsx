@@ -5,6 +5,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { ensureStableBlockIds, type ManuscriptDocument } from '@authorhub/manuscript';
+import { toEditorContent } from '../editor-content';
 
 const StableBlockAttributes = Extension.create({
   name: 'stableBlockAttributes',
@@ -42,7 +43,7 @@ export function ChapterEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [StarterKit, StableBlockAttributes],
-    content: initialContent,
+    content: toEditorContent(initialContent),
     editorProps: {
       attributes: {
         class: 'manuscript-editor',
