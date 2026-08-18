@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { manuscriptDocumentSchema, type ManuscriptDocument } from '@authorhub/manuscript';
+import {
+  extractBlockIndex,
+  manuscriptDocumentSchema,
+  type ManuscriptDocument,
+} from '@authorhub/manuscript';
 
 export interface BookWorkspace {
   id: string;
@@ -97,23 +101,27 @@ export async function createChapter(
 
 export async function saveNodeContent(
   client: SupabaseClient,
-  userId: string,
   nodeId: string,
   expectedVersion: number,
   content: ManuscriptDocument,
 ): Promise<number> {
   const validated = manuscriptDocumentSchema.parse(content);
-  const nextVersion = expectedVersion + 1;
+  const blockIndex = extractBlockIndex(validated).map((entry) => ({
+    block_id: entry.blockId,
+    block_type: entry.blockType,
+    ordinal: entry.ordinal,
+    text_content: entry.textContent,
+  }));
 
-  const { data, error } = await client
-    .from('manuscript_nodes')
-    .update({ content: validated, content_version: nextVersion, updated_by: userId })
-    .eq('id', nodeId)
-    .eq('content_version', expectedVersion)
-    .select('content_version')
-    .maybeSingle();
+  const { data, error } = await client.rpc('save_manuscript_node', {
+    p_node_id: nodeId,
+    p_expected_version: expectedVersion,
+    p_content: validated,
+    p_blocks: blockIndex,
+  });
 
+  if (error?.code === '40001') throw new Error('VERSION_CONFLICT');
   if (error) throw error;
-  if (!data) throw new Error('VERSION_CONFLICT');
-  return Number(data.content_version);
+  if (typeof data !== 'number') throw new Error('Manuscript save returned an invalid version.');
+  return data;
 }
