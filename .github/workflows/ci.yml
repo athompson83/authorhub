@@ -19,10 +19,12 @@ jobs:
           version: 10.15.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: node --check supabase/functions/account-lifecycle/handler.mjs
+      - run: node --check scripts/test-account-lifecycle.mjs
       - run: pnpm test
       - run: pnpm build
       - name: Start disposable policy-test database

@@ -1,10 +1,7 @@
 import { z } from "zod";
+import { imageSourceSchema } from "@authorhub/manuscript";
 const color = z.string().regex(/^#[0-9a-f]{6}$/i);
-const image = z
-  .string()
-  .max(3_000_000)
-  .regex(/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+=*$/)
-  .or(z.literal(""));
+const image = imageSourceSchema.or(z.literal(""));
 export const editionSchema = z
   .object({
     name: z.string().trim().min(1).max(200).default("First edition"),
@@ -32,6 +29,12 @@ export const editionSchema = z
     runningHeader: z.string().max(200).default(""),
     coverColor: color.default("#21483d"),
     coverTextColor: color.default("#ffffff"),
+    coverInset: z.number().min(0.25).max(2).default(0.65),
+    coverTitleOffset: z.number().min(0).max(5).default(0),
+    backFontSize: z.number().min(8).max(32).default(12),
+    spineFontSize: z.number().min(8).max(32).default(12),
+    barcode: z.boolean().default(true),
+    barcodeWidth: z.number().min(1.4).max(2.5).default(1.6),
     coverTitleSize: z.number().min(16).max(80).default(36),
     coverAlign: z.enum(["left", "center", "right"]).default("left"),
     coverImage: image.default(""),

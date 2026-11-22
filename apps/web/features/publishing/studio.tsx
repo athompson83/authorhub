@@ -1,10 +1,14 @@
 "use client";
 import Link from "next/link";
+import type { BookSource } from "@/features/references/schema";
+import { uploadBookImage } from "@/features/assets/upload";
+import { replaceAssetReferences } from "@/features/assets/references";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { defaultEdition, editionSchema, type Edition } from "./schema";
 import { publicationSchema, publicationHtml, readiness } from "./publication";
-import { download, epub, docx } from "./exports";
+import { download } from "./download";
+import { type ArtifactFormat } from "./artifact-format";
 type SavedEdition = {
   id: string;
   name: string;
@@ -20,16 +24,21 @@ type Release = {
 type Book = { id: string; title: string; subtitle: string | null };
 export function Studio({
   book,
+  sources,
+  initialAssetUrls,
   nodes,
   editions,
   releases,
 }: {
   book: Book;
+  sources: BookSource[];
+  initialAssetUrls: Record<string, string>;
   nodes: unknown[];
   editions: SavedEdition[];
   releases: Release[];
 }) {
   const router = useRouter();
+  const [assetUrls, setAssetUrls] = useState(initialAssetUrls);
   const [config, setConfig] = useState<Edition>(() =>
     editions[0] ? editionSchema.parse(editions[0].config) : defaultEdition,
   );
@@ -53,9 +62,15 @@ export function Studio({
         setMessage("Save your edition settings before leaving the studio.");
       }
     };
+    const action = (event: Event) => {
+      event.preventDefault();
+      setMessage("Save your edition settings before signing out.");
+    };
+    window.addEventListener("authorhub:before-action", action);
     window.addEventListener("beforeunload", unload);
     document.addEventListener("click", navigation, true);
     return () => {
+      window.removeEventListener("authorhub:before-action", action);
       window.removeEventListener("beforeunload", unload);
       document.removeEventListener("click", navigation, true);
     };
@@ -68,6 +83,7 @@ export function Studio({
     schemaVersion: 1,
     rendererVersion: "authorhub-1",
     book,
+    sources,
     edition: config,
     nodes,
   });
@@ -185,17 +201,19 @@ export function Studio({
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
-          if (
-            file.size > 2_000_000 ||
-            !["image/png", "image/jpeg"].includes(file.type)
-          ) {
-            setMessage("Choose a PNG or JPEG under 2 MB.");
-            return;
+          setMessage("Uploading artwork…");
+          try {
+            const asset = await uploadBookImage(book.id, file);
+            setAssetUrls((urls) => ({ ...urls, [asset.id]: asset.url }));
+            update(key, asset.reference);
+            setMessage(
+              "Artwork uploaded. Save your edition to keep this selection.",
+            );
+          } catch (error) {
+            setMessage(
+              error instanceof Error ? error.message : "Artwork upload failed.",
+            );
           }
-          const reader = new FileReader();
-          reader.onload = () => update(key, String(reader.result));
-          reader.onerror = () => setMessage("Image could not be read.");
-          reader.readAsDataURL(file);
         }}
       />
       {config[key] && (
@@ -209,37 +227,51 @@ export function Studio({
       )}
     </label>
   );
-  async function exportFile(
-    format: "epub" | "docx" | "json" | "interior" | "cover",
-  ) {
+  async function exportFile(format: ArtifactFormat) {
     if (!release) return;
     setBusy(true);
+    setMessage("Preparing your export…");
     try {
-      const p = publicationSchema.parse(release.payload),
-        name = `authorhub-${release.id}`;
-      if (format === "epub")
-        download(
-          new Blob([new Uint8Array(epub(p, release.id))], {
-            type: "application/epub+zip",
-          }),
-          `${name}.epub`,
+      const start = await fetch(`/api/releases/${release.id}/exports`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ format }),
+      });
+      const queued = await start.json();
+      if (!start.ok) throw new Error(queued.error);
+      for (let attempt = 0; attempt < 150; attempt++) {
+        const status = await fetch(
+            `/api/releases/${release.id}/exports?job=${queued.jobId}`,
+          ),
+          result = await status.json();
+        if (!status.ok) throw new Error(result.error);
+        if (result.status === "succeeded") {
+          const response = await fetch(result.url);
+          if (!response.ok)
+            throw new Error(
+              "Download unavailable. Retry to retrieve your saved export.",
+            );
+          download(await response.blob(), result.filename);
+          setMessage(
+            "Export downloaded. A protected copy is saved with this release.",
+          );
+          return;
+        }
+        if (result.status === "failed") throw new Error(result.error);
+        setMessage(
+          "Generating export. Your frozen release is safe; this may take a minute for a long textbook.",
         );
-      else if (format === "docx") download(await docx(p), `${name}.docx`);
-      else if (format === "json")
-        download(
-          new Blob([JSON.stringify(release.payload, null, 2)], {
-            type: "application/json",
-          }),
-          `${name}.json`,
-        );
-      else
-        download(
-          new Blob([publicationHtml(p, format)], { type: "text/html" }),
-          `${name}-${format}.html`,
-        );
-      setMessage("Export downloaded.");
-    } catch {
-      setMessage("Export failed. Your release has been preserved.");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      throw new Error(
+        "Export is still processing. Retry after five minutes to resume an interrupted export.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Export failed. Retry to resume safely.",
+      );
     } finally {
       setBusy(false);
     }
@@ -372,6 +404,19 @@ export function Studio({
               {color("coverColor", "Cover background")}
               {color("coverTextColor", "Cover text color")}
               {number("coverTitleSize", "Title size", 16, 80, 1)}
+              {number("coverInset", "Cover text inset", 0.25, 2)}
+              {number("coverTitleOffset", "Title top offset", 0, 5)}
+              {number("backFontSize", "Back copy type size", 8, 32, 1)}
+              {number("spineFontSize", "Spine type size", 8, 32, 1)}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={config.barcode}
+                  onChange={(event) => update("barcode", event.target.checked)}
+                />{" "}
+                Include assigned ISBN barcode
+              </label>
+              {number("barcodeWidth", "Barcode width", 1.4, 2.5)}
               <label>
                 Text alignment
                 <select
@@ -397,9 +442,9 @@ export function Studio({
               {number("bleed", "Cover bleed", 0, 0.25, 0.025)}
               <p className="muted">
                 Use your printer’s final page count, paper and binding template
-                for spine width. Cover export has no barcode; add the
-                printer-approved barcode before submission. Review image
-                resolution at final size.
+                for spine width. The optional barcode uses your assigned ISBN.
+                Review its placement, image resolution and the complete wrap
+                against your printer’s template before submission.
               </p>
             </div>
           )}
@@ -459,30 +504,41 @@ export function Studio({
                   ))}
                 </select>
               </label>
-              {(["epub", "docx", "interior", "cover", "json"] as const).map(
-                (f) => (
-                  <button
-                    key={f}
-                    className="button"
-                    disabled={!release || busy}
-                    onClick={() => void exportFile(f)}
-                  >
+              {(
+                [
+                  "epub",
+                  "docx",
+                  "interior_pdf",
+                  "cover_pdf",
+                  "interior_html",
+                  "cover_html",
+                  "backup",
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f}
+                  className="button"
+                  disabled={!release || busy}
+                  onClick={() => void exportFile(f)}
+                >
+                  {
                     {
-                      {
-                        epub: "Download EPUB",
-                        docx: "Download DOCX",
-                        interior: "Download print interior (HTML → PDF)",
-                        cover: "Download cover wrap (HTML → PDF)",
-                        json: "Download release backup",
-                      }[f]
-                    }
-                  </button>
-                ),
-              )}
+                      epub: "Download EPUB",
+                      docx: "Download DOCX",
+                      interior_pdf: "Download interior PDF",
+                      cover_pdf: "Download cover PDF",
+                      interior_html: "Download print interior HTML",
+                      cover_html: "Download cover wrap HTML",
+                      backup: "Download release backup",
+                    }[f]
+                  }
+                </button>
+              ))}
               <p className="muted">
-                HTML exports print to PDF in your browser. Files need
-                publisher/printer validation. Downloading a release does not
-                submit it to a retailer.
+                Exports are generated from this frozen release and stored
+                privately. PDF files include the saved trim, margins and cover
+                geometry. Check your printer’s template before submission.
+                Downloading does not submit files to a retailer.
               </p>
             </div>
           )}
@@ -523,7 +579,7 @@ export function Studio({
                 }
               }}
               srcDoc={publicationHtml(
-                preview,
+                replaceAssetReferences(preview, (id) => assetUrls[id] ?? ""),
                 tab === "Cover" ? "cover" : "interior",
               )}
             />

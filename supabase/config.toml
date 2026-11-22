@@ -397,6 +397,11 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+[functions.account-lifecycle]
+# The handler validates every caller token with Auth.getUser. This also accepts
+# current asymmetric signing keys unsupported by the legacy gateway verifier.
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

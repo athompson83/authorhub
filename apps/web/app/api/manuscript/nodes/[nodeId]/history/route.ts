@@ -5,23 +5,68 @@ import { createClient } from "@/lib/supabase/server";
 import { saveNodeContent } from "@/features/manuscript/repository";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ nodeId: string }> },
 ) {
   const { nodeId } = await params;
   const db = await createClient();
   if (!(await db.auth.getUser()).data.user)
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  const query = new URL(request.url).searchParams,
+    id = query.get("id"),
+    source = query.get("source");
+  if (id) {
+    if (!z.string().uuid().safeParse(id).success)
+      return NextResponse.json({ error: "Invalid revision." }, { status: 400 });
+    const snapshot = source === "snapshot";
+    const { data, error } = await db
+      .from(snapshot ? "manuscript_snapshots" : "manuscript_revisions")
+      .select(
+        snapshot
+          ? "id,name,created_at,payload"
+          : "id,title,version,created_at,content",
+      )
+      .eq("id", id)
+      .eq("node_id", nodeId)
+      .single();
+    if (error || !data)
+      return NextResponse.json(
+        { error: "Revision unavailable." },
+        { status: 404 },
+      );
+    const row = data as unknown as {
+      id: string;
+      name?: string;
+      title?: string;
+      version?: number;
+      created_at: string;
+      content?: unknown;
+      payload?: { title: string; version: number; content: unknown };
+    };
+    return NextResponse.json(
+      {
+        revision: {
+          id: row.id,
+          title: snapshot ? row.payload?.title : row.title,
+          version: snapshot ? row.payload?.version : row.version,
+          created_at: row.created_at,
+          content: row.payload?.content ?? row.content,
+          source: snapshot ? "snapshot" : "revision",
+        },
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const [revisions, snapshots] = await Promise.all([
     db
       .from("manuscript_revisions")
-      .select("id,version,title,created_at,content")
+      .select("id,version,title,created_at")
       .eq("node_id", nodeId)
       .order("version", { ascending: false })
       .limit(100),
     db
       .from("manuscript_snapshots")
-      .select("id,name,created_at,payload")
+      .select("id,name,created_at,version:payload->version")
       .eq("node_id", nodeId)
       .order("created_at", { ascending: false })
       .limit(100),

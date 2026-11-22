@@ -47,14 +47,14 @@ export async function getBookWorkspace(
   };
 }
 
-export async function listManuscriptNodes(
+export async function listManuscriptOutline(
   client: SupabaseClient,
   bookId: string,
-): Promise<ManuscriptNode[]> {
+): Promise<Omit<ManuscriptNode, "content">[]> {
   const { data, error } = await client
     .from("manuscript_nodes")
     .select(
-      "id,book_id,parent_id,kind,title,position,content,content_version,updated_at",
+      "id,book_id,parent_id,kind,title,position,content_version,updated_at",
     )
     .eq("book_id", bookId)
     .order("position", { ascending: true })
@@ -68,10 +68,34 @@ export async function listManuscriptNodes(
     kind: row.kind,
     title: row.title,
     position: Number(row.position),
-    content: manuscriptDocumentSchema.parse(row.content),
     contentVersion: Number(row.content_version),
     updatedAt: row.updated_at,
   }));
+}
+
+export async function getManuscriptNode(
+  client: SupabaseClient,
+  nodeId: string,
+): Promise<ManuscriptNode> {
+  const { data, error } = await client
+    .from("manuscript_nodes")
+    .select(
+      "id,book_id,parent_id,kind,title,position,content,content_version,updated_at",
+    )
+    .eq("id", nodeId)
+    .single();
+  if (error || !data) throw new Error("Chapter not found.");
+  return {
+    id: data.id,
+    bookId: data.book_id,
+    parentId: data.parent_id,
+    kind: data.kind,
+    title: data.title,
+    position: Number(data.position),
+    content: manuscriptDocumentSchema.parse(data.content),
+    contentVersion: Number(data.content_version),
+    updatedAt: data.updated_at,
+  };
 }
 
 export async function createChapter(

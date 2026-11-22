@@ -73,6 +73,10 @@ export async function POST(
       .select("*")
       .eq("book_id", bookId)
       .order("position");
+    const { data: sources } = await db
+      .from("book_sources")
+      .select("*")
+      .eq("book_id", bookId);
     const preflight = readiness(
       publicationSchema.parse({
         schemaVersion: 1,
@@ -80,6 +84,7 @@ export async function POST(
         book,
         edition: edition.config,
         nodes,
+        sources: sources ?? [],
       }),
     );
     if (preflight.blockers.length)

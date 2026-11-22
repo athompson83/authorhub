@@ -1,42 +1,55 @@
-# Textbook workflow implementation
+# Textbook workflow
 
-## Implemented
+AuthorHub provides a single-author textbook authoring and publication-file workflow. Books, manuscript history, edition settings, sources and release files live in Supabase with server-enforced tenant policies. Hosting status and deployment steps are recorded in [Deployment](DEPLOYMENT.md).
 
-This branch extends `foundation/authorhub-product-architecture`. The default branch was documentation-only; the application is Next.js, React, TipTap and Supabase, retaining chapter-scoped canonical content and server-enforced access rules.
+## Using AuthorHub
 
-- Sign in, create books and chapters, write with headings, emphasis, quotations, ordered/bulleted lists, code, tables and PNG/JPEG figures with required alt text.
-- Stable block IDs are assigned in the live editor; pasted blocks receive fresh identities so copying between chapters does not collide with the global block index. Saves are serialized, queued edits are coalesced, failures retain the latest draft for retry, and stale saves return HTTP 409. Unsaved drafts can be downloaded; navigation is guarded while changes are pending.
-- Rename chapters, change front/part/chapter/section/back matter type, and move chapters earlier/later. Structural edits use optimistic versions and serialize ordering changes.
-- Automatic append-only saved revisions, named snapshots, side-by-side text comparison, and restore as a new revision. The panel displays the newest 100 revisions and 100 named snapshots; older revisions remain in the database. Named snapshots can be compared/restored independently of that revision window. Refresh after writing before restoring or changing chapter settings.
-- Multiple editions with independently saved metadata, ISBN-13 checksum validation, trim, margins, inside gutter, typography, paragraph spacing/indent, heading color, running header, contents and page-number settings.
-- Cover background/text colors, title size/alignment, front/back artwork and opacity, back copy, spine copy/width and bleed. Text is escaped and uploaded images stay private inside edition/release data. PNG/JPEG uploads are limited to 2 MB each. External images and SVG are not accepted.
-- Immutable publication copies freeze book metadata, canonical chapter versions/content and edition settings in one database operation. Automatic history, snapshots and publication copies cannot be updated by ordinary application users. Releases never read the subsequent working draft.
-- EPUB 3, DOCX, print-interior HTML, cover-wrap HTML and complete release JSON downloads. HTML uses paged CSS and can be printed to PDF in a browser. All formats derive from the canonical manuscript.
-- Edition edits reject stale versions. Removed workspace members cannot continue using retained book memberships.
+1. Create an account and confirm your email when requested. Password recovery is available from sign-in.
+2. Create a book in Library, or import a release backup or plain-text manuscript. A backup restores into a **new** editable book with new identities; it does not overwrite another book.
+3. Add and order front matter, parts, chapters, sections and back matter. Edit with headings, quotations, lists, tables, figures, equations, notes and source citations. Add bibliographic records in the chapter's Source library.
+4. Watch the save status. Autosaves serialize changes and reject stale versions. Pending navigation is guarded; failed saves retain the latest in-memory draft for retry or download. Automatic revisions, named snapshots, text comparison and restoration are available under History. Restoring creates another revision.
+5. Open **Cover, interior & publish**. Create an edition, enter its author and publication metadata, and configure the interior and cover. Save the edition before freezing a release.
+6. Resolve readiness issues and freeze a publication copy. Download EPUB, DOCX, interior PDF, cover PDF, printable interior HTML, cover-wrap HTML or a complete release backup from that immutable copy.
+7. Review the generated files and upload them to your printer or distributor. Retailer submission is performed by the author.
+
+The edition controls include ISBN-13 validation; trim; margins and inside gutter; fonts; paragraph spacing/indent; headings; running headers; contents; page numbers; front/back artwork and opacity; background/text colors; title alignment, size and placement; back/spine copy, sizes and placement; spine width; bleed; and an optional EAN-13 ISBN barcode. Use your printer's paper, binding and final-page-count specification for spine width.
+
+Book settings support metadata changes and reversible archive/restore. Owners can permanently delete a book after typing its current title. This removes all collaborators' manuscript, history, sources, editions and releases, and schedules private-file removal. Failed cleanup remains visible and retriable in Account settings. Download backups first. Account deletion requires password verification, no owned books and no pending file cleanup. Shared workspaces must have another owner. Account removal preserves anonymous UUID attribution in other authors' shared revision history.
+
+## Storage and version control
+
+Canonical content is chapter-scoped semantic data with stable block identities. The block index and citation records are derived from that canonical representation. Ordinary edits preserve identities; copied/pasted blocks, notes and citations receive new identities. Source and edition updates use optimistic versions, as do chapter content and structural edits.
+
+History lists the newest 100 saved revisions and 100 named snapshots without loading their full content. Selected comparisons fetch one document. Older automatic revisions remain stored. Named snapshots can be restored independently of the automatic revision window.
+
+Artwork is uploaded directly to a private bucket, with a 20 MB per-image limit, image decoding, dimensions and SHA-256. Only PNG/JPEG are accepted. Editor URLs expire; canonical documents retain private asset identities. Frozen releases capture book metadata, canonical chapter versions, sources, edition settings and the artwork manifest in one database snapshot. Rendering reads verified frozen bytes rather than the working draft.
+
+Every export has a persisted job, an exclusive lease and an immutable private artifact with hash and size. Downloads use short-lived signed URLs. Repeated downloads reuse archived bytes. Interrupted attempts can be resumed after a five-minute lease; each source release/format has at most three attempts. Files are limited to 50 MB. The web renderer uses packaged Chromium within a 300-second execution budget. Large image-heavy books may need smaller artwork or separate volumes.
 
 ## Local setup
 
-Use Node 22 or later and the pinned pnpm version in `package.json`:
+Use Node 24 and pnpm 10.15.0:
 
 ```sh
 corepack pnpm install --frozen-lockfile
 npx supabase start
 ```
 
-Copy the local Supabase API URL and publishable key from `supabase status` into `apps/web/.env.local`:
+Apply all migrations to your local instance. Copy the API URL and publishable key from `supabase status` into ignored `apps/web/.env.local`:
 
 ```dotenv
-NEXT_PUBLIC_SUPABASE_URL=<your-local-or-staging-Supabase-URL>
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-publishable-key>
+NEXT_PUBLIC_SUPABASE_URL=<Supabase API URL>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable key>
 ```
 
-These two public values are consumed by browser and server Supabase clients. Never use a service-role key here. Apply all checked-in migrations to a disposable or staging project before running the app. Standard local `supabase start` initializes migrations; use the CLI's documented reset command when rebuilding a local database. No hosted project is linked or changed by this implementation.
+Only these two public values are required by the web app. Never expose a service-role key to Next or the browser. Start the account lifecycle Edge Function separately when using deletion controls:
 
 ```sh
+npx supabase functions serve account-lifecycle
 corepack pnpm dev
 ```
 
-Open `/sign-up`, create an account, then Library → Create book → Add chapter. Open **Cover, interior & publish** to configure an edition. Save it, open **Release**, freeze a publication copy, choose it and download exports.
+The function obtains its administrative credentials from Supabase's injected environment. It independently validates every caller through Auth.getUser; PostgreSQL checks owner access and typed confirmation. Administrative access is restricted to private cleanup and Auth identity removal. See the deployment guide before using a hosted instance.
 
 ## Verification
 
@@ -45,49 +58,37 @@ corepack pnpm typecheck
 corepack pnpm lint
 corepack pnpm test
 corepack pnpm build
-corepack pnpm exec playwright install chromium
+corepack pnpm test:database
 corepack pnpm exec playwright test
 ```
 
-The browser test uses a running app and disposable Supabase with email auto-confirmation enabled. Configure `AUTHORHUB_TEST_URL`, `AUTHORHUB_TEST_SUPABASE_URL` and `AUTHORHUB_TEST_SUPABASE_KEY` to point to that disposable environment. It creates synthetic accounts and books. Do not run it against production.
+The database script uses an explicitly named disposable PostgreSQL container (`authorhub-test-db`, or `AUTHORHUB_TEST_CONTAINER`), creates its own temporary database, replays every migration, tests both positive and negative authorization, and removes that database. The minimal Auth/Storage catalogs in `supabase/tests/bootstrap.sql` are **only** for this PostgreSQL policy test, never for hosted deployment.
 
-A smaller PostgreSQL-only migration/RLS test is available when the complete Supabase image exceeds local resources:
+The browser suite requires a running app and disposable real Auth, PostgreSQL, PostgREST and Storage services with email auto-confirmation. Set `AUTHORHUB_TEST_URL`, `AUTHORHUB_TEST_SUPABASE_URL` and `AUTHORHUB_TEST_SUPABASE_KEY`. It creates synthetic accounts and books. The account-lifecycle function must be running. Do not run this suite against production.
 
-```sh
-docker run -d --name authorhub-test-db -e POSTGRES_PASSWORD=local-test-only postgres:17-alpine
-scripts/test-database.sh
-```
+To exercise the actual lifecycle handler against disposable Auth and Storage, additionally provide `AUTHORHUB_TEST_SERVICE_KEY` only to the test process and run `node scripts/test-account-lifecycle.mjs`. Never commit that value.
 
-The script creates and removes its own disposable database, supplies only the Auth schema needed for policy tests, applies every migration in order and checks positive/negative read/write, version, history and release behavior. It does not substitute for Auth integration testing. `AUTHORHUB_TEST_CONTAINER` changes the target container.
+Locally verified on 2026-11-22 using Node 24.22.3 / pnpm 10.15.0:
 
-The browser test exercises real Auth/PostgREST/PostgreSQL services, writes/reloads a chapter, persists a table and an image with alt text, snapshots and restores revisions, checks an HTTP 409, saves edition settings, freezes a release and downloads all five formats. It also renders the two HTML exports with Chromium's PDF engine and checks mobile overflow. EPUB downloads should additionally be checked with W3C EPUBCheck.
+- Workspace typecheck, lint, production build and unit tests; full migration replay and positive/negative tenancy, CAS, history, release, citation, artwork, artifact lease and deletion tests.
+- Browser journey: write/reload, artwork, table, equation, note, citation, source record, snapshot, compare/restore, conflict response, edition settings, frozen release, all seven downloads, mobile width, backup import, archive/restore and sign-out. Permanent deletion is covered by the real-service lifecycle integration and browser journey.
+- EPUBCheck 5.3.0: no errors or warnings on the exported book with embedded artwork, MathML, notes and citations.
+- Server PDF geometry inspected with `pdfinfo`: interior 504 × 720 pt (7 × 10 inches); cover 1062 × 738 pt (14.75 × 10.25 inches). Tagged PDFs are generated using the same packaged Chromium binary intended for hosting.
+- Independent barcode decoding from a rendered cover PDF recovered ISBN 9780306406157.
+- A 100,000-word manuscript rendered successfully; independent text extraction found all 100,000 expected words and the final manuscript marker.
+- Real Auth/Storage lifecycle integration: authentication failures, outsider/owner boundaries, title confirmation, nested private file removal, idempotent cleanup retry, refusal to delete an account owning books and successful Auth account removal.
 
-## Deliberate limits / release gates
+Local checks do not establish hosted configuration, actual delivery of production auth emails, printer acceptance or distributor certification.
 
-This is an authoring and publication-file workflow, **not a production-complete publishing platform**. No live deployment, retailer submission, payments, hosted project provisioning or manuscript publication has occurred.
+## Format details and remaining boundaries
 
-- PDF output currently requires browser Print → Save as PDF. Browser/version/font differences affect pagination. Use 100% scale, document paper size, background graphics enabled and browser headers/footers disabled. Check the generated result against the printer's template; PDF/X, CMYK, embedded licensed fonts, crop marks and printer certification are not implemented.
-- Spine width is entered from the printer's paper/binding/final-page-count specification. No automatic spine formula or ISBN barcode generation is claimed. Cover wrap bleed expands the outer sheet; critical text is inset. Dedicated printer preflight and full-bleed artwork positioning require a later rendering slice.
-- EPUB is reflowable; print typography/page-number/cover-wrap geometry does not apply. DOCX is an editorial handoff and can repaginate in Word/LibreOffice. DOCX lists currently use visible list markers; complex merged table fidelity is not guaranteed.
-- Exports run in the user's browser, with no server render queue or artifact storage. Frozen source/config data is immutable; generated file bytes are not archived as immutable artifacts. Large image-heavy books need a durable worker/storage pipeline and image deduplication before production release. DOCX timestamps can vary between downloads.
-- Plain-text comparison does not visualize changes to image artwork, table layout, or text formatting. Editing supports the listed schema primitives; native equations, footnotes, cross-references, citation management, tracked suggestions and source/evidence ingestion remain unimplemented. Authors can write references/front/back matter manually.
-- Bulk import, release-backup restore, collaborator invitation UI, password recovery UI, offline draft recovery, account/book deletion UI, billing and production observability remain future work. Do not imply these are functional in marketing.
-- A dedicated release-readiness audit still needs backup/recovery, account lifecycle, large-book load, browser coverage, accessibility, dependency/security review and printer-specific validation before public launch.
+- Interior and cover PDFs are generated on the server. Review printer templates before manufacture. PDF/X, CMYK conversion, crop marks, licensed custom font uploads and printer-specific certification are not provided.
+- EPUB is reflowable. Print typography, page numbers and full-wrap cover geometry apply to print output. EPUB equations use MathML; reader support varies.
+- DOCX uses editable Office Math, native numbered/bulleted lists, Word footnotes, a bibliography, running headers and page-number footers. Word/LibreOffice can repaginate it. Complex merged tables require visual review.
+- Notes appear as endnotes in PDF/HTML and semantic linked notes in EPUB. They are native footnotes in Word. Bibliographic records and numbered source citations are supported; automated source ingestion, evidence verification, citation-style switching, cross-reference management and tracked suggestions are not implemented.
+- Compare shows text differences; it does not visualize artwork or formatting changes. Drafts are protected during the session, but offline editing and recovery after a browser crash are not implemented. Save before closing the browser.
+- This release focuses on the author-owned textbook workflow. Collaborator invitation/ownership-transfer UI, AI authoring, billing and royalty/retailer automation are not available. Existing role policies protect shared data, but account deletion may require an administrator to transfer ownership when using shared workspaces configured outside the UI.
 
 ## Dependency decisions
 
-TipTap image/table extensions use the existing editor model. `fflate` writes an actual EPUB ZIP container (mimetype first and uncompressed) and embeds figure assets; browsers have no native ZIP writer. `docx` produces Office Open XML without maintaining an editable second manuscript. Playwright verifies the critical browser journey and the print boundary. These additions avoid introducing a second editor, server renderer or unrelated service.
-
-## Verification record — 2026-11-22
-
-Locally verified on Node 24.22.3 / pnpm 10.15.0:
-
-- Frozen lockfile install, workspace typecheck/lint/build: passed. Build was also exercised with empty Supabase environment values so CI does not need production credentials.
-- 22 Vitest tests across auth, canonical manuscript and web feature packages: passed. Coverage includes queued autosaves/failure recovery, fresh pasted identities, structured validation, ISBN, escaping, EPUB ZIP structure and DOCX content/geometry.
-- All migrations replayed in PostgreSQL 17 and publishing RLS/history/release tests: passed. A real failure from implicit default write grants was reproduced, then explicit revocations were verified.
-- Playwright Chromium 145 full textbook journey with real local GoTrue + PostgREST + PostgreSQL: passed. The full Supabase Docker image exceeded the environment's unpacking limit, so the smaller services were used for the browser integration. Browser connector tooling was unavailable; Playwright provided browser interaction and screenshots.
-- EPUBCheck 5.3.0 on the browser-downloaded EPUB containing a table and embedded figure: zero errors and zero warnings.
-- Chromium PDF renders independently inspected with `pdfinfo`: interior 504 × 720 pt (7 × 10 in), three fixture pages; cover 1062 × 738 pt (14.75 × 10.25 in), one page. This verifies fixture geometry, not printer certification.
-- Desktop cover spread and 390 px mobile studio screenshots visually inspected. Fixed cover-preview clipping; verified full spread, readable labels, tab/selection state, unchanged design palette and mobile page width. No generated concept was used because this extends the existing design.
-
-Hosted deployment, hosted migrations, CI results and printer/distributor approval are not established by these local checks.
+`docx` produces Office Open XML and `fflate` creates EPUB containers; neither introduces another manuscript model. TipTap mathematics uses KaTeX for editing and validation; exports derive MathML and Office Math from the same LaTeX. XML conversion uses a maintained XML parser. Packaged Chromium and Playwright Core supply reproducible server-side paged rendering; the browser suite independently checks the resulting files. Background tasks and frozen artifacts are persisted so retries do not overwrite release bytes.

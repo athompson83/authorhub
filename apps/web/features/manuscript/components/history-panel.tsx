@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   extractBlockIndex,
   type ManuscriptDocument,
@@ -16,7 +16,7 @@ type Snapshot = {
   id: string;
   name: string;
   created_at: string;
-  payload: { version: number; content: ManuscriptDocument; title: string };
+  version: number;
 };
 const plain = (doc: ManuscriptDocument) =>
   extractBlockIndex(doc)
@@ -31,17 +31,39 @@ export function HistoryPanel({
   current: ManuscriptDocument;
   currentVersion: number;
 }) {
-  const [revisions, setRevisions] = useState<Revision[]>([]),
+  const [revisions, setRevisions] = useState<Omit<Revision, "content">[]>([]),
     [snapshots, setSnapshots] = useState<Snapshot[]>([]),
     [selected, setSelected] = useState<Revision | null>(null),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
-  async function load() {
+  const [saved, setSaved] = useState({
+    version: currentVersion,
+    content: current,
+  });
+  const load = useCallback(async () => {
     const response = await fetch(`/api/manuscript/nodes/${nodeId}/history`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     setRevisions(data.revisions);
     setSnapshots(data.snapshots);
+  }, [nodeId]);
+  async function selectRevision(
+    id: string,
+    source: "revision" | "snapshot" = "revision",
+  ) {
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/manuscript/nodes/${nodeId}/history?id=${id}&source=${source}`,
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setSelected(data.revision);
+    } catch {
+      setMessage("This revision could not be loaded.");
+    } finally {
+      setBusy(false);
+    }
   }
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +85,22 @@ export function HistoryPanel({
       cancelled = true;
     };
   }, [nodeId]);
+  useEffect(() => {
+    const onSaved = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          nodeId: string;
+          version: number;
+          content: ManuscriptDocument;
+        }>
+      ).detail;
+      if (detail.nodeId !== nodeId) return;
+      setSaved({ version: detail.version, content: detail.content });
+      void load().catch(() => setMessage("History could not be refreshed."));
+    };
+    window.addEventListener("authorhub:chapter-saved", onSaved);
+    return () => window.removeEventListener("authorhub:chapter-saved", onSaved);
+  }, [nodeId, load]);
   async function act(input: object) {
     if (
       !window.dispatchEvent(
@@ -119,7 +157,9 @@ export function HistoryPanel({
       <button
         type="button"
         className="button"
-        onClick={() => window.location.reload()}
+        onClick={() =>
+          void load().catch(() => setMessage("History could not be refreshed."))
+        }
       >
         Refresh history
       </button>
@@ -130,18 +170,9 @@ export function HistoryPanel({
             <button
               type="button"
               className="button"
-              onClick={() =>
-                setSelected({
-                  id: s.id,
-                  version: s.payload.version,
-                  content: s.payload.content,
-                  title: s.payload.title,
-                  created_at: s.created_at,
-                  source: "snapshot",
-                })
-              }
+              onClick={() => void selectRevision(s.id, "snapshot")}
             >
-              {s.name} · version {s.payload.version}
+              {s.name} · version {s.version}
             </button>
           </p>
         ))
@@ -153,7 +184,9 @@ export function HistoryPanel({
         aria-label="Compare revision"
         value={selected?.source === "snapshot" ? "" : (selected?.id ?? "")}
         onChange={(e) =>
-          setSelected(revisions.find((r) => r.id === e.target.value) ?? null)
+          e.target.value
+            ? void selectRevision(e.target.value)
+            : setSelected(null)
         }
       >
         <option value="">Choose a revision</option>
@@ -171,8 +204,8 @@ export function HistoryPanel({
               <pre>{plain(selected.content)}</pre>
             </div>
             <div>
-              <h4>Current saved version {currentVersion}</h4>
-              <pre>{plain(current)}</pre>
+              <h4>Current saved version {saved.version}</h4>
+              <pre>{plain(saved.content)}</pre>
             </div>
           </div>
           <label>
@@ -187,13 +220,13 @@ export function HistoryPanel({
                 action: "restore",
                 revisionId: selected.id,
                 source: selected.source ?? "revision",
-                version: currentVersion,
+                version: saved.version,
               });
             }}
           >
             <button
               className="button"
-              disabled={busy || selected.version === currentVersion}
+              disabled={busy || selected.version === saved.version}
             >
               Restore as new version
             </button>

@@ -7,9 +7,14 @@ export function reidentifyPaste(slice: Slice): Slice {
     const children: Node[] = [];
     node.content.forEach((child) => children.push(copy(child)));
     return node.type.create(
-      "blockId" in node.attrs
-        ? { ...node.attrs, blockId: createBlockId() }
-        : node.attrs,
+      {
+        ...node.attrs,
+        ...("blockId" in node.attrs ? { blockId: createBlockId() } : {}),
+        ...("noteId" in node.attrs ? { noteId: crypto.randomUUID() } : {}),
+        ...("citationId" in node.attrs
+          ? { citationId: crypto.randomUUID() }
+          : {}),
+      },
       Fragment.fromArray(children),
       node.marks,
     );

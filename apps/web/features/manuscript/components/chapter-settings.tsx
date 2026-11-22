@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 export function ChapterSettings({
   nodeId,
   title,
@@ -11,6 +11,16 @@ export function ChapterSettings({
   kind: string;
   version: number;
 }) {
+  const [contentVersion, setContentVersion] = useState(version);
+  useEffect(() => {
+    const saved = (event: Event) => {
+      const detail = (event as CustomEvent<{ nodeId: string; version: number }>)
+        .detail;
+      if (detail.nodeId === nodeId) setContentVersion(detail.version);
+    };
+    window.addEventListener("authorhub:chapter-saved", saved);
+    return () => window.removeEventListener("authorhub:chapter-saved", saved);
+  }, [nodeId]);
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   return (
@@ -40,7 +50,7 @@ export function ChapterSettings({
                 body: JSON.stringify({
                   title: form.get("title"),
                   kind: form.get("kind"),
-                  version,
+                  version: contentVersion,
                   direction: Number(form.get("direction")),
                 }),
               },
@@ -86,9 +96,7 @@ export function ChapterSettings({
         </button>
         <p role="status">{message}</p>
       </form>
-      <p className="muted">
-        Save your draft and reload before changing chapter settings.
-      </p>
+      <p className="muted">Save your draft before changing chapter settings.</p>
     </details>
   );
 }
