@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { publicationFonts } from "./fonts";
 import type { BookSource } from "@/features/references/schema";
 import { uploadBookImage } from "@/features/assets/upload";
 import { replaceAssetReferences } from "@/features/assets/references";
@@ -375,11 +376,14 @@ export function Studio({
                     update("font", e.target.value as Edition["font"])
                   }
                 >
-                  {["Georgia", "Times New Roman", "Arial"].map((f) => (
+                  {publicationFonts.map((f) => (
                     <option key={f}>{f}</option>
                   ))}
                 </select>
               </label>
+              <a href="/fonts/authorhub-fonts.zip" download>
+                Download fonts for editing in Word
+              </a>
               {number("fontSize", "Body font size", 8, 24, 1)}
               {number("lineHeight", "Line height", 1, 2)}
               {number("paragraphSpacing", "Paragraph spacing", 0, 24, 1)}

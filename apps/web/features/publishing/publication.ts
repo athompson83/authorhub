@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fontCss } from "./fonts";
 import { sourceSchema } from "../references/schema";
 import { isbnBarcode } from "./barcode";
 import {
@@ -41,7 +42,13 @@ export const publicationSchema = z.object({
     z.object({
       id: z.string().uuid(),
       title: z.string(),
-      kind: z.enum(["front_matter","part","chapter","section","back_matter"]),
+      kind: z.enum([
+        "front_matter",
+        "part",
+        "chapter",
+        "section",
+        "back_matter",
+      ]),
       position: z.coerce.number(),
       content_version: z.number(),
       content: manuscriptDocumentSchema,
@@ -67,7 +74,7 @@ export function renderBlock(
   if (block.type === "blockMath")
     return `<div class="equation">${mathHtml(block.attrs.latex, true)}</div>`;
   if (block.type === "image")
-    return `<figure style="text-align:${block.attrs.align??"left"}"><img${block.attrs.width?` style="width:${block.attrs.width}px;height:auto"`:""} src="${escapeHtml(block.attrs.src)}" alt="${escapeHtml(block.attrs.alt)}"/><figcaption>${escapeHtml(block.attrs.title ?? "")}</figcaption></figure>`;
+    return `<figure style="text-align:${block.attrs.align ?? "left"}"><img${block.attrs.width ? ` style="width:${block.attrs.width}px;height:auto"` : ""} src="${escapeHtml(block.attrs.src)}" alt="${escapeHtml(block.attrs.alt)}"/><figcaption>${escapeHtml(block.attrs.title ?? "")}</figcaption></figure>`;
   if (
     block.type !== "paragraph" &&
     block.type !== "heading" &&
@@ -203,8 +210,8 @@ export function publicationHtml(
         `<section class="chapter" id="n-${n.id}"><h1>${h(n.title)}</h1>${n.content.content.map((block) => renderBlock(block, refs)).join("")}</section>`,
     )
     .join("");
-  return `<!DOCTYPE html><html lang="${h(e.language)}"><head><meta charset="utf-8"/><title>${h(p.book.title)}</title><style>
- @page {size:${width}in ${height}in;margin:${mode === "cover" ? 0 : e.margin}in;${e.pageNumbers && mode === "interior" ? "@bottom-center {content:counter(page);font-size:9pt}" : ""}}
+  return `<!DOCTYPE html><html lang="${h(e.language)}"><head><meta charset="utf-8"/><title>${h(p.book.title)}</title><style>${fontCss(e.font, (filename) => `/fonts/${filename}`)}
+ @page {size:${width}in ${height}in;margin:${mode === "cover" ? 0 : e.margin}in;${e.pageNumbers && mode === "interior" ? `@bottom-center {content:counter(page);font-size:9pt;font-family:'${e.font}'}` : ""}}
  @page:left {margin-right:${mode === "cover" ? 0 : e.margin + e.gutter}in} @page:right {margin-left:${mode === "cover" ? 0 : e.margin + e.gutter}in}
  *{box-sizing:border-box} body{margin:0;color:#222;font-family:'${e.font}',serif;font-size:${e.fontSize}pt;line-height:${e.lineHeight}}
  img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%;break-inside:avoid}td,th{border:1px solid #aaa;padding:6pt;text-align:left}figure{margin:1em 0;break-inside:avoid}figcaption{font-size:.85em}pre{white-space:pre-wrap} h1,h2,h3{color:${e.accent};line-height:1.2;break-after:avoid} h1{font-size:2em} p{margin:0 0 ${e.paragraphSpacing}pt;text-indent:${e.indent}in;orphans:3;widows:3} blockquote{border-left:2pt solid ${e.accent};padding-left:1em} .chapter,.title-page,.contents{break-before:page} .title-page{padding-top:20%;text-align:center} a{color:inherit} .contents a{display:block;margin:1em 0} .running{font-size:9pt;color:#555} .cover-wrap{display:flex;width:max-content;break-after:page;overflow:hidden} .cover-panel{position:relative;overflow:visible;flex-shrink:0} .cover-panel img{position:absolute;width:100%;height:100%;object-fit:cover;inset:0} .cover-copy{position:relative;padding:.65in;height:100%;display:flex;flex-direction:column} .cover-copy h1,.cover-copy h2{color:inherit} .cover-copy p{white-space:normal;text-indent:0} .cover-author{margin-top:auto} .spine{display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}.spine span{writing-mode:vertical-rl;white-space:nowrap;font-size:${e.spineFontSize}pt}

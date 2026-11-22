@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { unzipSync, strFromU8 } from "fflate";
 import { renderArtifact } from "./render";
 import { publicationSchema } from "../publication";
 import { defaultEdition } from "../schema";
@@ -34,18 +35,10 @@ const publication = publicationSchema.parse({
 it("renders actual server PDFs with distinct interior and cover sheet geometry", async () => {
   const progress = (format: string) => (stage: string) =>
     console.info(`PDF ${format}: ${stage}`);
-  const interior = await renderArtifact(
-      publication,
-      id,
-      "interior_pdf",
-      progress("interior"),
-    ),
-    cover = await renderArtifact(
-      publication,
-      id,
-      "cover_pdf",
-      progress("cover"),
-    );
+  const [interior, cover] = await Promise.all([
+    renderArtifact(publication, id, "interior_pdf", progress("interior")),
+    renderArtifact(publication, id, "cover_pdf", progress("cover")),
+  ]);
   const decode = (b: Uint8Array) => new TextDecoder("latin1").decode(b);
   expect(decode(interior).startsWith("%PDF-")).toBe(true);
   expect(decode(interior)).toMatch(/\/MediaBox\s*\[0 0 504 720\]/);
@@ -103,3 +96,25 @@ it("renders a complete 100,000-word textbook across chapter boundaries", async (
   expect(bytes.byteLength).toBeGreaterThan(1000);
   await writeFile("/tmp/authorhub-large-book.pdf", bytes);
 }, 120000);
+
+it("embeds licensed body and mathematics fonts in portable EPUB output", async () => {
+  const { writeFile } = await import("node:fs/promises");
+  const bytes = await renderArtifact(publication, id, "epub");
+  const files = unzipSync(bytes);
+  expect([
+    ...files["EPUB/fonts/dejavu-serif-regular.ttf"]!.slice(0, 4),
+  ]).toEqual([0, 1, 0, 0]);
+  expect(strFromU8(files["EPUB/fonts/latinmodern-math.otf"]!.slice(0, 4))).toBe(
+    "OTTO",
+  );
+  expect(strFromU8(files["EPUB/fonts/LPPL-LICENSE.txt"]!)).toContain(
+    "The LaTeX Project Public License",
+  );
+  expect(strFromU8(files["EPUB/style.css"]!)).toContain(
+    "font-family:'Latin Modern Math'",
+  );
+  expect(strFromU8(files["EPUB/package.opf"]!)).toContain(
+    'media-type="font/otf"',
+  );
+  await writeFile("/tmp/authorhub-fonts.epub", bytes);
+});

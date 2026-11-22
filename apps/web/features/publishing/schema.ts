@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { publicationFonts } from "./fonts";
 import { imageSourceSchema } from "@authorhub/manuscript";
 const color = z.string().regex(/^#[0-9a-f]{6}$/i);
 const image = imageSourceSchema.or(z.literal(""));
@@ -18,7 +19,17 @@ export const editionSchema = z
     trimHeight: z.number().min(6).max(16).default(10),
     margin: z.number().min(0.25).max(2).default(0.65),
     gutter: z.number().min(0).max(1).default(0.2),
-    font: z.enum(["Georgia", "Times New Roman", "Arial"]).default("Georgia"),
+    font: z.preprocess(
+      (value) =>
+        value === "Georgia"
+          ? "DejaVu Serif"
+          : value === "Times New Roman"
+            ? "Liberation Serif"
+            : value === "Arial"
+              ? "Liberation Sans"
+              : value,
+      z.enum(publicationFonts).default("DejaVu Serif"),
+    ),
     fontSize: z.number().min(8).max(24).default(11),
     lineHeight: z.number().min(1).max(2).default(1.45),
     paragraphSpacing: z.number().min(0).max(24).default(8),

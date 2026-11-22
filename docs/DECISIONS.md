@@ -37,3 +37,7 @@ Artwork is uploaded directly to private Supabase Storage, addressed by immutable
 ## Account lifecycle
 
 Permanent book removal atomically deletes canonical data and records a private cleanup task. A dedicated Supabase Edge Function validates the caller with Auth, invokes owner-checked PostgreSQL operations, removes only the deleted book’s UUID-prefixed private files, and records completion. Interrupted cleanup is retriable from Account settings. The web application and renderer never receive service-role credentials. Account removal requires recent password verification, no owned books or pending cleanup, and another owner for shared workspaces. Auth identities are soft-deleted and shared attribution retains anonymous UUIDs rather than breaking collaborators’ history.
+
+## Reproducible typography
+
+Use unmodified, redistributable DejaVu and Liberation font files instead of assuming proprietary desktop fonts exist in a serverless runtime. Preview, server PDF and portable HTML use the same four regular/bold/italic faces; EPUB embeds them with their licenses. A downloadable font pack supports the same typography in Word. These static assets are included explicitly in export-function tracing.

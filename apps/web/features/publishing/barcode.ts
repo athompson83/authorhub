@@ -70,5 +70,5 @@ export function isbnBarcode(isbn: string, width = 1.6): string {
           `<text text-anchor="middle" x="${i < 6 ? 17.5 + i * 7 : 64.5 + (i - 6) * 7}" y="76">${digit}</text>`,
       )
       .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.min(2.5, Math.max(1.4, width))}in" viewBox="0 0 113 80" role="img" aria-label="ISBN ${digits}"><rect width="113" height="80" fill="white"/><g fill="black">${bars}</g><g fill="black" font-family="Arial,sans-serif" font-size="9">${text}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.min(2.5, Math.max(1.4, width))}in" viewBox="0 0 113 80" role="img" aria-label="ISBN ${digits}"><rect width="113" height="80" fill="white"/><g fill="black">${bars}</g><g fill="black" font-family="Liberation Sans,sans-serif" font-size="9">${text}</g></svg>`;
 }

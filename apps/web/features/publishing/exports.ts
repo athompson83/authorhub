@@ -1,4 +1,5 @@
 import { zipSync, strToU8 } from "fflate";
+import { fontCss, type PublicationFontFile } from "./fonts";
 import {
   Document,
   Packer,
@@ -37,7 +38,11 @@ import {
 } from "./references";
 import { officeMath } from "./office-math";
 
-export function epub(p: Publication, identifier: string): Uint8Array {
+export function epub(
+  p: Publication,
+  identifier: string,
+  fonts: PublicationFontFile[] = [],
+): Uint8Array {
   const h = escapeHtml,
     e = p.edition;
   const references = referenceContext(p.nodes, p.sources),
@@ -51,8 +56,9 @@ export function epub(p: Publication, identifier: string): Uint8Array {
     '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
   );
   files["EPUB/style.css"] = strToU8(
-    `img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:.4em}body{font-family:${e.font},serif;line-height:${e.lineHeight}}h1,h2,h3{color:${e.accent}}p{margin-bottom:${e.paragraphSpacing}pt}img{max-width:100%}`,
+    `${fonts.length ? fontCss(e.font, (filename) => `fonts/${filename}`) : ""}img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:.4em}body{font-family:'${e.font}',serif;line-height:${e.lineHeight}}h1,h2,h3{color:${e.accent}}p{margin-bottom:${e.paragraphSpacing}pt}img{max-width:100%}`,
   );
+  for (const font of fonts) files[`EPUB/fonts/${font.filename}`] = font.bytes;
   const figures = new Map<string, string>();
   for (const n of p.nodes) {
     const html = n.content.content.map(blockHtml).join("");
@@ -123,11 +129,11 @@ export function epub(p: Publication, identifier: string): Uint8Array {
     );
   }
   files["EPUB/package.opf"] = strToU8(
-    `<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="pub-id">urn:uuid:${h(identifier)}</dc:identifier><dc:title>${h(p.book.title)}</dc:title><dc:creator>${h(e.author)}</dc:creator><dc:language>${h(e.language)}</dc:language>${e.publisher ? `<dc:publisher>${h(e.publisher)}</dc:publisher>` : ""}${e.description ? `<dc:description>${h(e.description)}</dc:description>` : ""}${e.copyright ? `<dc:rights>${h(e.copyright)}</dc:rights>` : ""}<meta property="dcterms:modified">${h((p.frozenAt ?? "2000-01-01T00:00:00Z").replace(/\.\d+Z$/, "Z"))}</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="style" href="style.css" media-type="text/css"/><item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>${coverItem}${[...figures.values()].map((path, i) => `<item id="figure${i}" href="${path}" media-type="image/${path.endsWith(".png") ? "png" : "jpeg"}"/>`).join("")}${e.coverImage ? '<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>' : ""}${p.nodes.map((_, i) => `<item id="c${i}" href="chapter-${i}.xhtml" media-type="application/xhtml+xml"${mathChapters.has(i) ? ' properties="mathml"' : ""}/>`).join("")}${hasReferences ? '<item id="references" href="references.xhtml" media-type="application/xhtml+xml"/>' : ""}</manifest><spine>${e.coverImage ? '<itemref idref="cover"/>' : ""}<itemref idref="title"/><itemref idref="nav"/>${p.nodes.map((_, i) => `<itemref idref="c${i}"/>`).join("")}${hasReferences ? '<itemref idref="references"/>' : ""}</spine></package>`,
+    `<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="pub-id">urn:uuid:${h(identifier)}</dc:identifier><dc:title>${h(p.book.title)}</dc:title><dc:creator>${h(e.author)}</dc:creator><dc:language>${h(e.language)}</dc:language>${e.publisher ? `<dc:publisher>${h(e.publisher)}</dc:publisher>` : ""}${e.description ? `<dc:description>${h(e.description)}</dc:description>` : ""}${e.copyright ? `<dc:rights>${h(e.copyright)}</dc:rights>` : ""}<meta property="dcterms:modified">${h((p.frozenAt ?? "2000-01-01T00:00:00Z").replace(/\.\d+Z$/, "Z"))}</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="style" href="style.css" media-type="text/css"/><item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>${coverItem}${fonts.map((font, index) => `<item id="font${index}" href="fonts/${font.filename}" media-type="${font.mediaType}"/>`).join("")}${[...figures.values()].map((path, i) => `<item id="figure${i}" href="${path}" media-type="image/${path.endsWith(".png") ? "png" : "jpeg"}"/>`).join("")}${e.coverImage ? '<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>' : ""}${p.nodes.map((_, i) => `<item id="c${i}" href="chapter-${i}.xhtml" media-type="application/xhtml+xml"${mathChapters.has(i) ? ' properties="mathml"' : ""}/>`).join("")}${hasReferences ? '<item id="references" href="references.xhtml" media-type="application/xhtml+xml"/>' : ""}</manifest><spine>${e.coverImage ? '<itemref idref="cover"/>' : ""}<itemref idref="title"/><itemref idref="nav"/>${p.nodes.map((_, i) => `<itemref idref="c${i}"/>`).join("")}${hasReferences ? '<itemref idref="references"/>' : ""}</spine></package>`,
   );
   return zipSync(files, { level: 6, mtime: new Date("2000-01-01T00:00:00Z") });
 }
-function figureDimensions(data: Uint8Array,requestedWidth?:number|null) {
+function figureDimensions(data: Uint8Array, requestedWidth?: number | null) {
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   let width = 4,
     height = 3;
@@ -149,7 +155,9 @@ function figureDimensions(data: Uint8Array,requestedWidth?:number|null) {
       offset += length + 2;
     }
   }
-  const scale = requestedWidth?requestedWidth/Math.max(width,1):Math.min(1,400 / Math.max(width, 1), 560 / Math.max(height, 1));
+  const scale = requestedWidth
+    ? requestedWidth / Math.max(width, 1)
+    : Math.min(1, 400 / Math.max(width, 1), 560 / Math.max(height, 1));
   return {
     width: Math.round(width * scale),
     height: Math.round(height * scale),
@@ -200,7 +208,7 @@ function paragraphs(
           new ImageRun({
             data,
             type: block.attrs.src.startsWith("data:image/png") ? "png" : "jpg",
-            transformation: figureDimensions(data,block.attrs.width),
+            transformation: figureDimensions(data, block.attrs.width),
             altText: {
               title: block.attrs.alt,
               description: block.attrs.alt,

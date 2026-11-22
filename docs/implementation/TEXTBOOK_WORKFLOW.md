@@ -82,7 +82,7 @@ Local checks do not establish hosted configuration, actual delivery of productio
 
 ## Format details and remaining boundaries
 
-- Interior and cover PDFs are generated on the server. Review printer templates before manufacture. PDF/X, CMYK conversion, crop marks, licensed custom font uploads and printer-specific certification are not provided.
+- Interior and cover PDFs are generated on the server. DejaVu Serif, Liberation Serif, Liberation Sans and Latin Modern Math are bundled with their redistribution licenses and embedded in PDF/HTML/EPUB output. The Interior tab provides the same font files for Word; install them if your editing machine does not already have them. Earlier development backups using Georgia, Times New Roman or Arial map to their bundled serif/sans alternatives. Review printer templates before manufacture. PDF/X, CMYK conversion, crop marks, licensed custom font uploads and printer-specific certification are not provided.
 - EPUB is reflowable. Print typography, page numbers and full-wrap cover geometry apply to print output. EPUB equations use MathML; reader support varies.
 - DOCX uses editable Office Math, native numbered/bulleted lists, Word footnotes, a bibliography, running headers and page-number footers. Word/LibreOffice can repaginate it. Complex merged tables require visual review.
 - Notes appear as endnotes in PDF/HTML and semantic linked notes in EPUB. They are native footnotes in Word. Bibliographic records and numbered source citations are supported; automated source ingestion, evidence verification, citation-style switching, cross-reference management and tracked suggestions are not implemented.
