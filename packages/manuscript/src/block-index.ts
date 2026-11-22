@@ -1,4 +1,4 @@
-import type { ManuscriptBlock, ManuscriptDocument } from './schema';
+import type { ManuscriptBlock, ManuscriptDocument } from "./schema";
 
 export interface ManuscriptBlockIndexEntry {
   blockId: string;
@@ -8,13 +8,17 @@ export interface ManuscriptBlockIndexEntry {
 }
 
 function textFromBlock(block: ManuscriptBlock): string {
-  if (block.type === 'blockquote') {
-    return block.content.map(textFromBlock).join('\n');
-  }
-  return (block.content ?? []).map((node) => node.text).join('');
+  if (block.type === "image") return block.attrs.alt;
+  return (block.content ?? [])
+    .map((node) => ("text" in node ? node.text : textFromBlock(node)))
+    .join(
+      ["paragraph", "heading", "codeBlock"].includes(block.type) ? "" : "\n",
+    );
 }
 
-export function extractBlockIndex(document: ManuscriptDocument): ManuscriptBlockIndexEntry[] {
+export function extractBlockIndex(
+  document: ManuscriptDocument,
+): ManuscriptBlockIndexEntry[] {
   return document.content.map((block, ordinal) => ({
     blockId: block.attrs.blockId,
     blockType: block.type,

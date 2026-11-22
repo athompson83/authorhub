@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProductLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,14 +21,9 @@ export default async function ProductLayout({ children }: Readonly<{ children: R
           <nav className="nav-section">
             <div className="nav-label">Workspace</div>
             <Link className="nav-item active" href="/library">Library</Link>
-            <span className="nav-item">Search</span>
-            <span className="nav-item">Recent</span>
-            <span className="nav-item">Templates</span>
+
           </nav>
-          <nav className="nav-section">
-            <div className="nav-label">Account</div>
-            <span className="nav-item">Settings</span>
-          </nav>
+
         </aside>
         <main className="main">{children}</main>
       </div>

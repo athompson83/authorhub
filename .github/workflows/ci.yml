@@ -20,11 +20,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Bootstrap exception: no lockfile exists yet. Codex must commit the
-      # generated pnpm-lock.yaml, restore pnpm caching, and switch install back
-      # to --frozen-lockfile after the first verified dependency resolution.
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+      - name: Start disposable policy-test database
+        run: docker run -d --name authorhub-test-db -e POSTGRES_PASSWORD=local-test-only postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+      - run: pnpm test:database
+      - name: Remove disposable database
+        if: always()
+        run: docker rm -f authorhub-test-db || true

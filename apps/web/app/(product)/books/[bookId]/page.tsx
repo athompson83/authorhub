@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { ChapterSettings } from '@/features/manuscript/components/chapter-settings';
+import { HistoryPanel } from '@/features/manuscript/components/history-panel';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createChapterAction } from '@/features/manuscript/actions';
@@ -30,15 +32,14 @@ export default async function BookPage({
   const addChapter = createChapterAction.bind(null, book.id);
 
   return (
-    <div style={{ margin: '-34px -38px -70px', minHeight: 'calc(100vh - 68px)', background: 'var(--surface)' }}>
+    <div style={{ minHeight: 'calc(100vh - 68px)', background: 'var(--surface)' }}>
       <header className="book-workspace-header">
         <div>
           <Link href="/library" className="muted" style={{ fontSize: 12 }}>← Library</Link>
           <div className="book-workspace-title">{book.title}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="button" type="button">Share</button>
-          <button className="button primary" type="button">Publication readiness</button>
+          <Link className="button primary" href={`/books/${book.id}/publish`}>Cover, interior & publish</Link>
         </div>
       </header>
 
@@ -73,12 +74,14 @@ export default async function BookPage({
                 <div className="eyebrow">{selected.kind.replace('_', ' ')}</div>
                 <h1>{selected.title || 'Untitled'}</h1>
               </div>
+              <ChapterSettings nodeId={selected.id} title={selected.title} kind={selected.kind} version={selected.contentVersion} />
               <ChapterEditor
-                key={selected.id}
+                key={`${selected.id}-${selected.contentVersion}`}
                 nodeId={selected.id}
                 initialContent={selected.content}
                 initialVersion={selected.contentVersion}
               />
+              <HistoryPanel nodeId={selected.id} current={selected.content} currentVersion={selected.contentVersion} />
             </>
           ) : (
             <div className="empty-manuscript">
@@ -92,7 +95,7 @@ export default async function BookPage({
         </section>
 
         <aside className="book-inspector">
-          <div className="inspector-tabs"><strong>Brief</strong><span>Sources</span><span>Claims</span><span>History</span></div>
+          <div className="inspector-tabs"><strong>Book brief</strong></div>
           <section className="inspector-section">
             <div className="nav-label" style={{ paddingLeft: 0 }}>Audience</div>
             <p>{book.audience || 'No audience defined yet.'}</p>
@@ -105,7 +108,7 @@ export default async function BookPage({
             <div className="nav-label" style={{ paddingLeft: 0 }}>Target</div>
             <p>{book.targetWordCount ? `${book.targetWordCount.toLocaleString()} words` : 'No target word count'}</p>
           </section>
-          <div className="inspector-coming-soon">Source evidence, claim review, and revision history plug into this panel in the next subsystem slices.</div>
+          <div className="inspector-coming-soon">Revision history is below the chapter editor. Cover and interior settings are in the publication studio.</div>
         </aside>
       </div>
     </div>

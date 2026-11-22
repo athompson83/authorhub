@@ -30,7 +30,9 @@ The repository now contains an executable application foundation rather than doc
 - durable-job database/runtime boundary
 - CI workflow for typecheck, lint, test, and build
 
-The source/evidence engine, AI operations, snapshots UI, export/rendering engines, publishing readiness workflow, billing, and production observability remain subsequent implementation slices.
+The textbook workflow now adds saved revision history, named snapshots and restoration, lists/tables/figures, chapter organization, multiple editions, cover/interior controls, immutable publication copies, EPUB/DOCX downloads and browser-print HTML for interiors and cover wraps.
+
+See [Textbook workflow: setup, verification and release limits](docs/implementation/TEXTBOOK_WORKFLOW.md). This is not production-complete: printer-certified PDF output, retailer submission, native equations/footnotes/citations, source/evidence ingestion, AI operations, billing and production observability remain future work.
 
 ## Repository structure
 

@@ -40,9 +40,11 @@ export async function createBook(
     throw membershipError ?? new Error('No AuthorHub workspace is available for this account.');
   }
 
-  const { data, error } = await client
+  const bookId = crypto.randomUUID();
+  const { error } = await client
     .from('books')
     .insert({
+      id: bookId,
       organization_id: membership.organization_id,
       title: input.title,
       subtitle: input.subtitle || null,
@@ -50,10 +52,10 @@ export async function createBook(
       purpose: input.purpose || null,
       target_word_count: input.targetWordCount ?? null,
       created_by: userId,
-    })
-    .select('id')
-    .single();
+    });
 
-  if (error || !data) throw error ?? new Error('Book creation failed.');
-  return data as { id: string };
+  // RETURNING applies the SELECT policy before the AFTER owner-membership
+  // trigger becomes visible. A client-generated UUID avoids relaxing RLS.
+  if (error) throw error;
+  return { id: bookId };
 }

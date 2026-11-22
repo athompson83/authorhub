@@ -1,9 +1,9 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   extractBlockIndex,
   manuscriptDocumentSchema,
   type ManuscriptDocument,
-} from '@authorhub/manuscript';
+} from "@authorhub/manuscript";
 
 export interface BookWorkspace {
   id: string;
@@ -18,7 +18,7 @@ export interface ManuscriptNode {
   id: string;
   bookId: string;
   parentId: string | null;
-  kind: 'front_matter' | 'part' | 'chapter' | 'section' | 'back_matter';
+  kind: "front_matter" | "part" | "chapter" | "section" | "back_matter";
   title: string;
   position: number;
   content: ManuscriptDocument;
@@ -26,14 +26,17 @@ export interface ManuscriptNode {
   updatedAt: string;
 }
 
-export async function getBookWorkspace(client: SupabaseClient, bookId: string): Promise<BookWorkspace> {
+export async function getBookWorkspace(
+  client: SupabaseClient,
+  bookId: string,
+): Promise<BookWorkspace> {
   const { data, error } = await client
-    .from('books')
-    .select('id,title,subtitle,audience,purpose,target_word_count')
-    .eq('id', bookId)
+    .from("books")
+    .select("id,title,subtitle,audience,purpose,target_word_count")
+    .eq("id", bookId)
     .single();
 
-  if (error || !data) throw error ?? new Error('Book not found.');
+  if (error || !data) throw error ?? new Error("Book not found.");
   return {
     id: data.id,
     title: data.title,
@@ -44,12 +47,18 @@ export async function getBookWorkspace(client: SupabaseClient, bookId: string): 
   };
 }
 
-export async function listManuscriptNodes(client: SupabaseClient, bookId: string): Promise<ManuscriptNode[]> {
+export async function listManuscriptNodes(
+  client: SupabaseClient,
+  bookId: string,
+): Promise<ManuscriptNode[]> {
   const { data, error } = await client
-    .from('manuscript_nodes')
-    .select('id,book_id,parent_id,kind,title,position,content,content_version,updated_at')
-    .eq('book_id', bookId)
-    .order('position', { ascending: true });
+    .from("manuscript_nodes")
+    .select(
+      "id,book_id,parent_id,kind,title,position,content,content_version,updated_at",
+    )
+    .eq("book_id", bookId)
+    .order("position", { ascending: true })
+    .order("id");
 
   if (error) throw error;
   return (data ?? []).map((row) => ({
@@ -72,30 +81,30 @@ export async function createChapter(
   title: string,
 ): Promise<{ id: string }> {
   const { data: latest } = await client
-    .from('manuscript_nodes')
-    .select('position')
-    .eq('book_id', bookId)
-    .is('parent_id', null)
-    .order('position', { ascending: false })
+    .from("manuscript_nodes")
+    .select("position")
+    .eq("book_id", bookId)
+    .is("parent_id", null)
+    .order("position", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const position = latest ? Number(latest.position) + 1000 : 1000;
   const { data, error } = await client
-    .from('manuscript_nodes')
+    .from("manuscript_nodes")
     .insert({
       book_id: bookId,
       parent_id: null,
-      kind: 'chapter',
+      kind: "chapter",
       title,
       position,
       created_by: userId,
       updated_by: userId,
     })
-    .select('id')
+    .select("id")
     .single();
 
-  if (error || !data) throw error ?? new Error('Unable to create chapter.');
+  if (error || !data) throw error ?? new Error("Unable to create chapter.");
   return data as { id: string };
 }
 
@@ -113,15 +122,16 @@ export async function saveNodeContent(
     text_content: entry.textContent,
   }));
 
-  const { data, error } = await client.rpc('save_manuscript_node', {
+  const { data, error } = await client.rpc("save_manuscript_node", {
     p_node_id: nodeId,
     p_expected_version: expectedVersion,
     p_content: validated,
     p_blocks: blockIndex,
   });
 
-  if (error?.code === '40001') throw new Error('VERSION_CONFLICT');
+  if (error?.code === "40001") throw new Error("VERSION_CONFLICT");
   if (error) throw error;
-  if (typeof data !== 'number') throw new Error('Manuscript save returned an invalid version.');
+  if (typeof data !== "number")
+    throw new Error("Manuscript save returned an invalid version.");
   return data;
 }
