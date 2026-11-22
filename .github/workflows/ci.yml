@@ -1,0 +1,35 @@
+name: AuthorHub CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: node --check supabase/functions/account-lifecycle/handler.mjs
+      - run: node --check scripts/test-account-lifecycle.mjs
+      - run: pnpm test
+      - run: pnpm build
+      - name: Start disposable policy-test database
+        run: docker run -d --name authorhub-test-db -e POSTGRES_PASSWORD=local-test-only postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+      - run: pnpm test:database
+      - name: Remove disposable database
+        if: always()
+        run: docker rm -f authorhub-test-db || true

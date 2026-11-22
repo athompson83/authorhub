@@ -4,14 +4,27 @@
 
 **A structured author operating system for taking a book from source material to publication readiness.**
 
-![Stage](https://img.shields.io/badge/stage-foundation-7C3AED?style=flat-square)
+![Stage](https://img.shields.io/badge/stage-local%20verification-7C3AED?style=flat-square)
 ![Focus](https://img.shields.io/badge/focus-source--grounded%20nonfiction-7C3AED?style=flat-square)
 ![Path](https://img.shields.io/badge/path-MVP%20%E2%86%92%20Beta%20%E2%86%92%20Production-7C3AED?style=flat-square)
 
 </div>
 
 > [!NOTE]
-> AuthorHub is currently documentation-first. Product, architecture, security, data, AI, export, UX, and delivery specifications are being established before application code is introduced.
+> AuthorHub now has a locally verified textbook authoring and publication-file workflow built on the existing application foundation. It is not production-complete. See [setup, verification evidence and release limits](docs/implementation/TEXTBOOK_WORKFLOW.md).
+
+## Working textbook workflow
+
+- Chapter editing with headings, lists, quotations, code, tables, private figures, equations, notes and source citations
+- Serialized autosave with conflict protection, automatic revision history, named snapshots, comparison and restoration
+- Chapter titles, front/back matter types and ordering
+- Multiple editions with metadata, ISBN validation, interior dimensions, margins, typography, running headers and contents
+- Front/back/spine cover controls, artwork, colors, copy, alignment, bleed and full-spread preview
+- Frozen publication copies and archived EPUB, DOCX, interior PDF, cover PDF, print HTML and release-backup downloads
+
+PDFs render on the server; release files are stored privately and downloaded through expiring links. Backups can be imported as new editable books. Password recovery, book settings, archive/restore and permanent deletion controls are included. Printer certification, automated evidence verification, AI operations, collaborator invitations, billing and direct retailer submission are not implemented. See the [deployment status and runbook](docs/implementation/DEPLOYMENT.md).
+
+For local setup and the complete behavior/limitations contract, read [Textbook workflow](docs/implementation/TEXTBOOK_WORKFLOW.md).
 
 ## Product thesis
 
@@ -30,14 +43,14 @@ Create book → Define audience and purpose → Import sources → Build outline
 
 ## Planned product pillars
 
-| Pillar | Outcome |
-| --- | --- |
-| Structured writing | Books, parts, chapters, sections, notes, and source material stay organized |
-| Evidence | Claims, citations, annotations, and supporting sources remain traceable |
-| Version control | Authors can review and restore meaningful manuscript history |
-| Governed AI | AI can draft, edit, critique, and fact-check without becoming the source of truth |
-| Professional export | One canonical manuscript can produce DOCX, EPUB, and PDF outputs |
-| Publishing readiness | Metadata, cover, sizing, identifiers, and release tasks become a guided workflow |
+| Pillar               | Outcome                                                                           |
+| -------------------- | --------------------------------------------------------------------------------- |
+| Structured writing   | Books, parts, chapters, sections, notes, and source material stay organized       |
+| Evidence             | Claims, citations, annotations, and supporting sources remain traceable           |
+| Version control      | Authors can review and restore meaningful manuscript history                      |
+| Governed AI          | AI can draft, edit, critique, and fact-check without becoming the source of truth |
+| Professional export  | One canonical manuscript can produce DOCX, EPUB, and PDF outputs                  |
+| Publishing readiness | Metadata, cover, sizing, identifiers, and release tasks become a guided workflow  |
 
 ## Planned technical baseline
 
@@ -51,18 +64,18 @@ Create book → Define audience and purpose → Import sources → Build outline
 
 ## Documentation map
 
-| Document | Purpose |
-| --- | --- |
-| [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product scope and requirements |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and package boundaries |
-| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Canonical data model and tenancy |
-| [`docs/AI.md`](docs/AI.md) | AI orchestration, provenance, and safety |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Security and intellectual-property controls |
-| [`docs/EXPORTS.md`](docs/EXPORTS.md) | Manuscript rendering and publication formats |
-| [`docs/UX.md`](docs/UX.md) | Information architecture and workflows |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | MVP → Beta → Production plan |
-| [`docs/TESTING.md`](docs/TESTING.md) | Quality and release gates |
-| [`AGENTS.md`](AGENTS.md) | Repository rules for coding agents |
+| Document                                       | Purpose                                      |
+| ---------------------------------------------- | -------------------------------------------- |
+| [`docs/PRODUCT.md`](docs/PRODUCT.md)           | Product scope and requirements               |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and package boundaries         |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md)     | Canonical data model and tenancy             |
+| [`docs/AI.md`](docs/AI.md)                     | AI orchestration, provenance, and safety     |
+| [`docs/SECURITY.md`](docs/SECURITY.md)         | Security and intellectual-property controls  |
+| [`docs/EXPORTS.md`](docs/EXPORTS.md)           | Manuscript rendering and publication formats |
+| [`docs/UX.md`](docs/UX.md)                     | Information architecture and workflows       |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)           | MVP → Beta → Production plan                 |
+| [`docs/TESTING.md`](docs/TESTING.md)           | Quality and release gates                    |
+| [`AGENTS.md`](AGENTS.md)                       | Repository rules for coding agents           |
 
 ## Non-negotiable boundary
 

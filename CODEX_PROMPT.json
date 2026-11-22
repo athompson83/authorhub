@@ -1,0 +1,84 @@
+{
+  "role": "You are the lead implementation engineer for AuthorHub. Continue the existing architecture; do not redesign the product from scratch.",
+  "repository": "https://github.com/athompson83/authorhub.git",
+  "starting_branch": "foundation/authorhub-product-architecture",
+  "objective": "Turn the connector-authored AuthorHub foundation into an executed, verified, buildable application baseline and then continue the approved MVP foundation plan.",
+  "required_reads": [
+    "AGENTS.md",
+    "docs/superpowers/specs/2026-08-18-authorhub-foundation-design.md",
+    "docs/superpowers/plans/2026-08-18-authorhub-mvp-foundation-plan.md",
+    "docs/implementation/CODEX_HANDOFF.md",
+    "docs/ARCHITECTURE.md",
+    "docs/DATA_MODEL.md",
+    "docs/SECURITY.md",
+    "docs/AI.md",
+    "docs/EXPORTS.md",
+    "docs/TESTING.md"
+  ],
+  "execution_order": [
+    "Inspect the current branch and diff before changing anything.",
+    "Enable Corepack, install dependencies, generate pnpm-lock.yaml, and commit the lockfile once dependency resolution is stable.",
+    "Run pnpm typecheck, pnpm lint, pnpm test, and pnpm build. Fix root causes without weakening gates or hiding errors.",
+    "After pnpm-lock.yaml is committed, restore CI to pnpm install --frozen-lockfile.",
+    "Validate all Supabase migrations against a disposable/local PostgreSQL/Supabase database from a clean reset.",
+    "Add automated negative and positive RLS tests for organizations, books, manuscript nodes, book memberships, and atomic manuscript saves.",
+    "Run the complete browser workflow: signup -> auto workspace -> Library -> create book -> add chapter -> edit -> autosave -> reload -> persistence.",
+    "Prove optimistic concurrency by editing one chapter in two browser sessions/tabs and verifying the stale save returns the conflict state instead of overwriting newer content.",
+    "Align the TipTap editor node set with the canonical manuscript schema so the browser cannot create unsupported JSON.",
+    "Implement immediate stable block-ID assignment inside ProseMirror transactions; IDs must persist across ordinary edits and reloads.",
+    "Implement named manuscript snapshots and restore-as-new-version behavior using the existing manuscript_snapshots table.",
+    "Update docs/implementation/CODEX_HANDOFF.md with exact verified status and continue the approved foundation plan only after the baseline is green."
+  ],
+  "non_negotiable_constraints": [
+    "Use test-driven development for behavior changes.",
+    "Do not store an entire book as one opaque rich-text document.",
+    "Do not remove stable block IDs or make external references depend only on character offsets.",
+    "Do not bypass or weaken RLS to make tests pass.",
+    "Do not expose SUPABASE_SERVICE_ROLE_KEY to browser code.",
+    "Do not silently overwrite a manuscript after a version conflict.",
+    "Do not let AI overwrite accepted author text without review and provenance.",
+    "Do not add sources, AI, publishing, audiobook, website, sales, or retailer features until the current foundation is verified unless required to fix an architectural blocker.",
+    "Do not report a gate as green unless you actually executed it at the reported commit SHA.",
+    "No TODO-only placeholders, fake functionality, or inert controls in any flow represented as complete."
+  ],
+  "verification_required": {
+    "repository": [
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm test",
+      "pnpm build"
+    ],
+    "database": [
+      "clean migration replay succeeds",
+      "RLS positive cases succeed",
+      "cross-tenant negative cases fail closed",
+      "stale manuscript save conflicts",
+      "successful manuscript save atomically replaces block index"
+    ],
+    "browser": [
+      "signup works",
+      "workspace bootstrap works",
+      "book creation works",
+      "chapter creation works",
+      "autosave persists",
+      "reload preserves content",
+      "stale-tab conflict is visible and prevents overwrite"
+    ]
+  },
+  "completion_report": {
+    "include": [
+      "exact branch and HEAD SHA",
+      "changed-file summary",
+      "each executed gate and result",
+      "database migration/test results",
+      "browser flow results",
+      "security findings",
+      "remaining blockers",
+      "next recommended implementation slice"
+    ],
+    "verdict_values": [
+      "GREEN_FOR_NEXT_SLICE",
+      "NOT_READY"
+    ]
+  }
+}

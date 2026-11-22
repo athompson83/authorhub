@@ -1,0 +1,188 @@
+import Link from "next/link";
+import { SourceLibrary } from "@/features/references/source-library";
+import { sourceSchema } from "@/features/references/schema";
+import { bookAssetUrls } from "@/features/assets/server";
+import { ChapterSettings } from "@/features/manuscript/components/chapter-settings";
+import { HistoryPanel } from "@/features/manuscript/components/history-panel";
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createChapterAction } from "@/features/manuscript/actions";
+import {
+  getManuscriptNode,
+  getBookWorkspace,
+  listManuscriptOutline,
+} from "@/features/manuscript/repository";
+import { ChapterEditor } from "@/features/manuscript/components/chapter-editor";
+
+export default async function BookPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ bookId: string }>;
+  searchParams: Promise<{ node?: string }>;
+}) {
+  const [{ bookId }, query] = await Promise.all([params, searchParams]);
+  const supabase = await createClient();
+
+  let book;
+  let nodes;
+  try {
+    [book, nodes] = await Promise.all([
+      getBookWorkspace(supabase, bookId),
+      listManuscriptOutline(supabase, bookId),
+    ]);
+  } catch {
+    notFound();
+  }
+
+  const selectedOutline =
+    nodes.find((node) => node.id === query.node) ??
+    nodes.find((node) => node.kind === "chapter") ??
+    nodes[0];
+  const selected = selectedOutline
+    ? await getManuscriptNode(supabase, selectedOutline.id)
+    : undefined;
+  const { data: sourceRows, error: sourceError } = await supabase
+    .from("book_sources")
+    .select("*")
+    .eq("book_id", book.id)
+    .order("created_at");
+  if (sourceError) throw new Error("Source library could not be loaded.");
+  const sources = sourceSchema.array().parse(sourceRows ?? []);
+  const assetUrls = await bookAssetUrls(supabase, book.id);
+  const addChapter = createChapterAction.bind(null, book.id);
+
+  return (
+    <div
+      style={{ minHeight: "calc(100vh - 68px)", background: "var(--surface)" }}
+    >
+      <header className="book-workspace-header">
+        <div>
+          <Link href="/library" className="muted" style={{ fontSize: 12 }}>
+            ← Library
+          </Link>
+          <div className="book-workspace-title">{book.title}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link className="button" href={`/books/${book.id}/settings`}>
+            Book settings
+          </Link>
+          <Link className="button primary" href={`/books/${book.id}/publish`}>
+            Cover, interior & publish
+          </Link>
+        </div>
+      </header>
+
+      <div className="book-workspace-grid">
+        <aside className="manuscript-outline">
+          <div className="outline-heading">
+            <span>Manuscript</span>
+            <span className="muted">{nodes.length}</span>
+          </div>
+          <nav aria-label="Manuscript outline">
+            {nodes.map((node, index) => (
+              <Link
+                key={node.id}
+                href={`/books/${book.id}?node=${node.id}`}
+                className={`outline-node ${selected?.id === node.id ? "active" : ""}`}
+              >
+                <span className="outline-index">
+                  {node.kind === "chapter" ? index + 1 : "•"}
+                </span>
+                <span>{node.title || "Untitled"}</span>
+              </Link>
+            ))}
+          </nav>
+          <form action={addChapter} className="add-chapter-form">
+            <input
+              name="title"
+              placeholder="New chapter title"
+              required
+              maxLength={200}
+              aria-label="New chapter title"
+            />
+            <button type="submit">+ Add chapter</button>
+          </form>
+        </aside>
+
+        <section className="manuscript-canvas">
+          {selected ? (
+            <>
+              <div className="chapter-heading">
+                <div className="eyebrow">{selected.kind.replace("_", " ")}</div>
+                <h1>{selected.title || "Untitled"}</h1>
+              </div>
+              <ChapterSettings
+                key={`settings-${selected.id}`}
+                nodeId={selected.id}
+                title={selected.title}
+                kind={selected.kind}
+                version={selected.contentVersion}
+              />
+              <ChapterEditor
+                key={`${selected.id}-${selected.contentVersion}`}
+                nodeId={selected.id}
+                bookId={book.id}
+                assetUrls={assetUrls}
+                sources={sources}
+                initialContent={selected.content}
+                initialVersion={selected.contentVersion}
+              />
+              <SourceLibrary bookId={book.id} sources={sources} />
+              <HistoryPanel
+                key={`history-${selected.id}`}
+                nodeId={selected.id}
+                current={selected.content}
+                currentVersion={selected.contentVersion}
+              />
+            </>
+          ) : (
+            <div className="empty-manuscript">
+              <div>
+                <div className="eyebrow">Ready to begin</div>
+                <h2>Add your first chapter</h2>
+                <p className="muted">
+                  AuthorHub stores each chapter independently so long books
+                  remain fast and every passage can be addressed by sources,
+                  comments, and revisions.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <aside className="book-inspector">
+          <div className="inspector-tabs">
+            <strong>Book brief</strong>
+          </div>
+          <section className="inspector-section">
+            <div className="nav-label" style={{ paddingLeft: 0 }}>
+              Audience
+            </div>
+            <p>{book.audience || "No audience defined yet."}</p>
+          </section>
+          <section className="inspector-section">
+            <div className="nav-label" style={{ paddingLeft: 0 }}>
+              Book purpose
+            </div>
+            <p>{book.purpose || "No purpose statement defined yet."}</p>
+          </section>
+          <section className="inspector-section">
+            <div className="nav-label" style={{ paddingLeft: 0 }}>
+              Target
+            </div>
+            <p>
+              {book.targetWordCount
+                ? `${book.targetWordCount.toLocaleString()} words`
+                : "No target word count"}
+            </p>
+          </section>
+          <div className="inspector-coming-soon">
+            Revision history is below the chapter editor. Cover and interior
+            settings are in the publication studio.
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
