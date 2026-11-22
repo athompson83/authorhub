@@ -1,100 +1,82 @@
+<div align="center">
+
 # AuthorHub
 
-AuthorHub is a structured author operating system for serious nonfiction authors. It is designed to take a book from source material and outline through drafting, evidence verification, editing, version history, professional export, and publication readiness.
+**A structured author operating system for taking a book from source material to publication readiness.**
 
-## Product direction
+![Stage](https://img.shields.io/badge/stage-local%20verification-7C3AED?style=flat-square)
+![Focus](https://img.shields.io/badge/focus-source--grounded%20nonfiction-7C3AED?style=flat-square)
+![Path](https://img.shields.io/badge/path-MVP%20%E2%86%92%20Beta%20%E2%86%92%20Production-7C3AED?style=flat-square)
 
-The initial market wedge is source-grounded nonfiction. The underlying manuscript and publishing model is genre-neutral so fiction, textbooks, manuals, and collaborative publishing workflows can be added later without replacing the core architecture.
+</div>
+
+> [!NOTE]
+> AuthorHub now has a locally verified textbook authoring and publication-file workflow built on the existing application foundation. It is not production-complete. See [setup, verification evidence and release limits](docs/implementation/TEXTBOOK_WORKFLOW.md).
+
+## Working textbook workflow
+
+- Chapter editing with headings, lists, quotations, code, tables and figures with alt text
+- Serialized autosave with conflict protection, automatic revision history, named snapshots, comparison and restoration
+- Chapter titles, front/back matter types and ordering
+- Multiple editions with metadata, ISBN validation, interior dimensions, margins, typography, running headers and contents
+- Front/back/spine cover controls, artwork, colors, copy, alignment, bleed and full-spread preview
+- Frozen publication copies and EPUB, DOCX, print-interior HTML, cover-wrap HTML and release-backup downloads
+
+PDF output uses browser Print → Save as PDF. Printer-specific preflight and direct retailer submission are not implemented. Source/evidence ingestion, AI operations, native equations/footnotes/citation management, billing and production operations remain future work.
+
+For local setup and the complete behavior/limitations contract, read [Textbook workflow](docs/implementation/TEXTBOOK_WORKFLOW.md).
+
+## Product thesis
+
+Authors do not need another blank text editor. They need a governed project workspace that keeps research, outlines, chapters, evidence, revisions, editorial decisions, publishing metadata, and final formats connected throughout the life of a book.
+
+The initial market wedge is **source-grounded nonfiction**. The manuscript and publishing model is intentionally genre-neutral so fiction, textbooks, manuals, and collaborative publishing can be added later without replacing the core architecture.
 
 ## North-star workflow
 
-Create book → define audience and purpose → import source material → build outline → write chapters → review with AI and humans → verify factual claims → resolve citations → freeze manuscript → generate DOCX/EPUB/PDF → complete publishing metadata → reach publication readiness.
-
-## Current implementation
-
-The repository now contains an executable application foundation rather than documentation only:
-
-- pnpm/Turborepo TypeScript monorepo
-- Next.js App Router web application
-- Supabase SSR browser/server clients
-- email/password signup and sign-in
-- automatic profile + personal workspace bootstrap after signup
-- tenant-aware organizations and memberships with RLS
-- multi-book Library and book creation flow
-- structured manuscript hierarchy
-- TipTap chapter editor
-- stable manuscript block identifiers
-- debounced autosave with optimistic content versions
-- atomic PostgreSQL save + block-index replacement
-- book and manuscript authorization primitives
-- durable-job database/runtime boundary
-- CI workflow for typecheck, lint, test, and build
-
-The textbook workflow now adds saved revision history, named snapshots and restoration, lists/tables/figures, chapter organization, multiple editions, cover/interior controls, immutable publication copies, EPUB/DOCX downloads and browser-print HTML for interiors and cover wraps.
-
-See [Textbook workflow: setup, verification and release limits](docs/implementation/TEXTBOOK_WORKFLOW.md). This is not production-complete: printer-certified PDF output, retailer submission, native equations/footnotes/citations, source/evidence ingestion, AI operations, billing and production observability remain future work.
-
-## Repository structure
-
 ```text
-apps/
-  web/       Next.js application and user-facing workflows
-  worker/    durable background-work boundary
-packages/
-  auth/      role and permission contracts
-  database/  shared database-facing record contracts
-  manuscript/canonical manuscript schemas, IDs, normalization, indexing
-  validation/shared validation utilities
-supabase/
-  migrations/database schema, RLS, atomic manuscript operations
-docs/
-  product, architecture, security, UX, AI, exports, testing, roadmap, plans
+Create book → Define audience and purpose → Import sources → Build outline
+→ Draft chapters → Review with AI and humans → Verify claims and citations
+→ Freeze manuscript → Generate DOCX / EPUB / PDF → Complete publishing metadata
+→ Reach publication readiness
 ```
 
-## Local setup
+## Planned product pillars
 
-Requirements: Node.js 22+ and pnpm 10.15+.
+| Pillar | Outcome |
+| --- | --- |
+| Structured writing | Books, parts, chapters, sections, notes, and source material stay organized |
+| Evidence | Claims, citations, annotations, and supporting sources remain traceable |
+| Version control | Authors can review and restore meaningful manuscript history |
+| Governed AI | AI can draft, edit, critique, and fact-check without becoming the source of truth |
+| Professional export | One canonical manuscript can produce DOCX, EPUB, and PDF outputs |
+| Publishing readiness | Metadata, cover, sizing, identifiers, and release tasks become a guided workflow |
 
-```bash
-pnpm install
-cp .env.example apps/web/.env.local
-pnpm dev
-```
+## Planned technical baseline
 
-Configure these values before authenticated workflows can run:
+- Next.js, React, and TypeScript
+- PostgreSQL/Supabase with Auth and Storage
+- TipTap/ProseMirror for structured editing
+- pgvector for grounded semantic retrieval
+- Provider-neutral AI orchestration
+- Background jobs for source ingestion, AI work, exports, and publishing tasks
+- Vercel for web delivery with dedicated workers/renderers where needed
 
-```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-SUPABASE_SERVICE_ROLE_KEY   # worker/server-only; never NEXT_PUBLIC
-```
+## Documentation map
 
-Apply the migrations in `supabase/migrations/` to a dedicated non-production Supabase project before running authenticated product flows.
+| Document | Purpose |
+| --- | --- |
+| [`docs/PRODUCT.md`](docs/PRODUCT.md) | Product scope and requirements |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and package boundaries |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Canonical data model and tenancy |
+| [`docs/AI.md`](docs/AI.md) | AI orchestration, provenance, and safety |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Security and intellectual-property controls |
+| [`docs/EXPORTS.md`](docs/EXPORTS.md) | Manuscript rendering and publication formats |
+| [`docs/UX.md`](docs/UX.md) | Information architecture and workflows |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | MVP → Beta → Production plan |
+| [`docs/TESTING.md`](docs/TESTING.md) | Quality and release gates |
+| [`AGENTS.md`](AGENTS.md) | Repository rules for coding agents |
 
-## Quality gates
+## Non-negotiable boundary
 
-```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm build
-```
-
-The initial connector-authored scaffold has not been locally executed in the environment that created it because that environment cannot clone GitHub. The first Codex task is therefore to install dependencies, generate and commit `pnpm-lock.yaml`, run every gate, fix any compile/runtime issues, and change CI back to `pnpm install --frozen-lockfile` once the lockfile is committed.
-
-## Documentation
-
-- `AGENTS.md` — repository rules for coding agents
-- `docs/PRODUCT.md` — product scope and requirements
-- `docs/ARCHITECTURE.md` — system design and package boundaries
-- `docs/DATA_MODEL.md` — canonical data model and tenancy rules
-- `docs/AI.md` — AI orchestration, provenance, and safety rules
-- `docs/SECURITY.md` — security and intellectual-property controls
-- `docs/EXPORTS.md` — canonical manuscript and publication rendering pipeline
-- `docs/UX.md` — information architecture and core workflows
-- `docs/ROADMAP.md` — MVP → Beta → Production delivery path
-- `docs/DECISIONS.md` — architectural decision record index
-- `docs/TESTING.md` — quality and release gates
-- `docs/implementation/CODEX_HANDOFF.md` — current implementation state and next execution sequence
-
-No secrets or production credentials belong in this repository.
+No secrets or production credentials belong in this repository. Manuscripts and source material are user intellectual property; future implementation must enforce tenant isolation, explicit AI data-use rules, export reproducibility, reliable backup/recovery, and clear deletion controls before public release.
