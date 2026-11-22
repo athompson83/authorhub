@@ -152,6 +152,11 @@ test("author writes, versions, designs and exports a textbook", async ({
     .fill("Copyright 2026 Morgan Reed. All rights reserved.");
   await page.getByRole("button", { name: "Save edition", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Edition saved.");
+  await expect(
+    page
+      .getByRole("combobox", { name: "Edition", exact: true })
+      .locator("option"),
+  ).toHaveCount(2);
   await page.getByRole("button", { name: "Interior", exact: true }).click();
   await page.getByLabel("Body font size").fill("12");
   await page.getByRole("button", { name: "Cover", exact: true }).click();

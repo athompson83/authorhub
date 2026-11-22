@@ -120,6 +120,7 @@ export function Studio({
       setVersion(result.version);
       setDirty(false);
       setMessage("Edition saved.");
+      router.refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed.");
     } finally {

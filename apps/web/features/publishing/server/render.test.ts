@@ -32,8 +32,20 @@ const publication = publicationSchema.parse({
   ],
 });
 it("renders actual server PDFs with distinct interior and cover sheet geometry", async () => {
-  const interior = await renderArtifact(publication, id, "interior_pdf"),
-    cover = await renderArtifact(publication, id, "cover_pdf");
+  const progress = (format: string) => (stage: string) =>
+    console.info(`PDF ${format}: ${stage}`);
+  const interior = await renderArtifact(
+      publication,
+      id,
+      "interior_pdf",
+      progress("interior"),
+    ),
+    cover = await renderArtifact(
+      publication,
+      id,
+      "cover_pdf",
+      progress("cover"),
+    );
   const decode = (b: Uint8Array) => new TextDecoder("latin1").decode(b);
   expect(decode(interior).startsWith("%PDF-")).toBe(true);
   expect(decode(interior)).toMatch(/\/MediaBox\s*\[0 0 504 720\]/);
@@ -49,9 +61,45 @@ it("renders complete release backups without involving the PDF engine", async ()
     "Plants convert sunlight to energy.",
   );
 });
-it('renders a complete 100,000-word textbook across chapter boundaries',async()=>{
- const {writeFile}=await import('node:fs/promises');
- const paragraph=Array(1000).fill('ecology').join(' ');
- const large=publicationSchema.parse({...publication,book:{...publication.book,title:'Large textbook fixture'},nodes:Array.from({length:10},(_,chapter)=>({id:`00000000-0000-4000-8000-${String(chapter+10).padStart(12,'0')}`,title:`Chapter ${chapter+1}`,kind:'chapter',position:(chapter+1)*1000,content_version:1,content:{version:1,type:'doc',content:[...Array.from({length:10},(_,block)=>({type:'paragraph',attrs:{blockId:`blk_largebook_${String(chapter).padStart(8,'0')}_${String(block).padStart(8,'0')}`},content:[{type:'text',text:paragraph}]})),...(chapter===9?[{type:'paragraph',attrs:{blockId:'blk_largebook_end_sentinel'},content:[{type:'text',text:'AUTHORHUB_END_OF_MANUSCRIPT'}]}]:[])]}}))});
- const bytes=await renderArtifact(large,id,'interior_pdf');expect(bytes.byteLength).toBeGreaterThan(1000);await writeFile('/tmp/authorhub-large-book.pdf',bytes);
-},120000);
+it("renders a complete 100,000-word textbook across chapter boundaries", async () => {
+  const { writeFile } = await import("node:fs/promises");
+  const paragraph = Array(1000).fill("ecology").join(" ");
+  const large = publicationSchema.parse({
+    ...publication,
+    book: { ...publication.book, title: "Large textbook fixture" },
+    nodes: Array.from({ length: 10 }, (_, chapter) => ({
+      id: `00000000-0000-4000-8000-${String(chapter + 10).padStart(12, "0")}`,
+      title: `Chapter ${chapter + 1}`,
+      kind: "chapter",
+      position: (chapter + 1) * 1000,
+      content_version: 1,
+      content: {
+        version: 1,
+        type: "doc",
+        content: [
+          ...Array.from({ length: 10 }, (_, block) => ({
+            type: "paragraph",
+            attrs: {
+              blockId: `blk_largebook_${String(chapter).padStart(8, "0")}_${String(block).padStart(8, "0")}`,
+            },
+            content: [{ type: "text", text: paragraph }],
+          })),
+          ...(chapter === 9
+            ? [
+                {
+                  type: "paragraph",
+                  attrs: { blockId: "blk_largebook_end_sentinel" },
+                  content: [
+                    { type: "text", text: "AUTHORHUB_END_OF_MANUSCRIPT" },
+                  ],
+                },
+              ]
+            : []),
+        ],
+      },
+    })),
+  });
+  const bytes = await renderArtifact(large, id, "interior_pdf");
+  expect(bytes.byteLength).toBeGreaterThan(1000);
+  await writeFile("/tmp/authorhub-large-book.pdf", bytes);
+}, 120000);
